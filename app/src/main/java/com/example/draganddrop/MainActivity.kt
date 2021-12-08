@@ -2,6 +2,7 @@ package com.example.draganddrop
 
 import android.content.res.TypedArray
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
@@ -16,8 +17,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
-    private var list = ArrayList<ArrayList<String>>()
+    private var sections = ArrayList<ArrayList<String>>()
     private var itemList = ArrayList<String>()
+
     private var headerList = ArrayList<Int>()
     private var footerList = ArrayList<Int>()
 
@@ -32,6 +34,7 @@ class MainActivity : AppCompatActivity() {
         createDummyList()
         createTouchHelper()
         initAdapter()
+
     }
 
     private fun createDummyList() {
@@ -50,10 +53,10 @@ class MainActivity : AppCompatActivity() {
                 else -> itemListFour.add(string.toString())
             }
         }
-        list.add(itemListOne)
-        list.add(itemListTwo)
-        list.add(itemListThree)
-        list.add(itemListFour)
+        sections.add(itemListOne)
+        sections.add(itemListTwo)
+        sections.add(itemListThree)
+        sections.add(itemListFour)
 
         arrayText.recycle()
     }
@@ -62,22 +65,13 @@ class MainActivity : AppCompatActivity() {
         touchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN or
                     ItemTouchHelper.START or ItemTouchHelper.END,
-             ItemTouchHelper.RIGHT
+            ItemTouchHelper.RIGHT
         ) {
+            var deleteListHeader = false
+            var deleteListFooter = false
 
-            //Scroll speed while dragging
-
-//            override fun interpolateOutOfBoundsScroll(
-//                recyclerView: RecyclerView,
-//                viewSize: Int,
-//                viewSizeOutOfBounds: Int,
-//                totalSize: Int,
-//                msSinceStartScroll: Long
-//            ): Int {
-//                val direction = sign(viewSizeOutOfBounds.toFloat()).toInt()
-//                return 10 * direction
-//            }
-
+            var dragFrom = -1
+            var dragTo = -1
 
             //Disable drag for header and footer
             override fun getMovementFlags(
@@ -89,6 +83,27 @@ class MainActivity : AppCompatActivity() {
                 return super.getMovementFlags(recyclerView, viewHolder)
             }
 
+            override fun clearView(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ) {
+                super.clearView(recyclerView, viewHolder)
+                if (dragFrom != -1 && dragTo != -1 && dragFrom != dragTo) {
+                    Log.d("test123", "From: $dragFrom, To: $dragTo")
+                    if (deleteListHeader) {
+                        //Delete list when hovering over HEADER
+                        adapter.deleteList(dragFrom, dragFrom + 1)
+                        deleteListHeader = false
+                    } else if (deleteListFooter) {
+                        //Delete list when hovering over FOOTER
+                        adapter.deleteList(dragFrom - 1, dragFrom)
+                        deleteListFooter = false
+                    }
+                }
+                dragFrom = -1
+                dragTo = -1
+            }
+
             override fun onMove(
                 p0: RecyclerView,
                 p1: RecyclerView.ViewHolder,
@@ -97,69 +112,57 @@ class MainActivity : AppCompatActivity() {
                 val sourcePosition = p1.absoluteAdapterPosition
                 val targetPosition = p2.absoluteAdapterPosition
 
+                if (dragFrom == -1) {
+                    dragFrom = sourcePosition
+                }
+                dragTo = targetPosition
+
                 //When dragging to fast, it causes bugs
                 //So we have to limit to swapping items only if the TARGET item is next to the SOURCE item
                 if (targetPosition + 1 != sourcePosition && targetPosition - 1 != sourcePosition) {
                     return true
                 }
 
-                //When item is dragged over a HEADER or FOOTER
                 when (p2) {
                     is MainAdapter.HeaderViewHolder -> {
                         //***** HEADER *****
                         //If it is the 1st Header of the list, return
                         if (targetPosition == 0) return true
 
+                        deleteListHeader = footerList.contains(sourcePosition + 1)
+
                         val newItemPosition = targetPosition - 1
+                        dragTo -= 1
 
                         //When dragging over a header we need to update both header and footer
                         adapter.updateHeader(sourcePosition, targetPosition, newItemPosition)
-                        Collections.swap(
-                            adapter.itemList,
-                            sourcePosition,
-                            targetPosition
-                        )
-                        Collections.swap(
-                            adapter.itemList,
-                            targetPosition,
-                            newItemPosition
-                        )
+                        Collections.swap(adapter.itemList, sourcePosition, targetPosition)
+                        Collections.swap(adapter.itemList, targetPosition, newItemPosition)
 
                         adapter.notifyItemMoved(sourcePosition, targetPosition)
                         adapter.notifyItemMoved(targetPosition, newItemPosition)
 
-                        //                    adapter.updateHeader(sourcePosition, targetPosition)
-                        //                    adapter.updateFooter(targetPosition, newItemPosition)
                     }
                     is MainAdapter.FooterViewHolder -> {
                         //***** FOOTER *****
                         //If it is the last Footer of the list, return
                         if (targetPosition == itemList.size - 1) return true
 
+                        deleteListFooter = headerList.contains(sourcePosition - 1)
+
                         val newItemPosition = targetPosition + 1
+                        dragTo += 1
 
                         //When dragging over a header we need to update both header and footer
                         adapter.updateFooter(sourcePosition, targetPosition, newItemPosition)
-                        Collections.swap(
-                            adapter.itemList,
-                            sourcePosition,
-                            targetPosition
-                        )
-                        Collections.swap(
-                            adapter.itemList,
-                            targetPosition,
-                            newItemPosition
-                        )
+                        Collections.swap(adapter.itemList, sourcePosition, targetPosition)
+                        Collections.swap(adapter.itemList, targetPosition, newItemPosition)
 
                         adapter.notifyItemMoved(sourcePosition, targetPosition)
                         adapter.notifyItemMoved(targetPosition, newItemPosition)
                     }
                     else -> {
-                        Collections.swap(
-                            adapter.itemList,
-                            sourcePosition,
-                            targetPosition
-                        )
+                        Collections.swap(adapter.itemList, sourcePosition, targetPosition)
                         adapter.notifyItemMoved(sourcePosition, targetPosition)
                     }
                 }
@@ -170,7 +173,11 @@ class MainActivity : AppCompatActivity() {
             override fun onSwiped(holder: RecyclerView.ViewHolder, swipeIndicator: Int) {
                 if (swipeIndicator == ItemTouchHelper.RIGHT) {
                     adapter.adapterDeleteItem(holder.absoluteAdapterPosition)
-                    Toast.makeText(this@MainActivity, "You swiped RIGHT. Item deleted.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "You swiped RIGHT. Item deleted.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         })
@@ -182,18 +189,18 @@ class MainActivity : AppCompatActivity() {
         adapter = MainAdapter()
         binding.recycler.layoutManager = LinearLayoutManager(this)
         binding.recycler.adapter = adapter
-        createAdapterList(list)
+        createAdapterList(sections)
     }
 
-    private fun createAdapterList(newList: ArrayList<ArrayList<String>>) {
+    private fun createAdapterList(sections: ArrayList<ArrayList<String>>) {
         //First values of header and footer
         var header = 0
-        var footer = newList[0].size + 1
+        var footer = sections[0].size + 1
 
-        newList.forEach {
-            if (newList.indexOf(it) != 0) {
-                val index = newList.indexOf(it) - 1
-                header += newList[index].size + 2
+        sections.forEach {
+            if (sections.indexOf(it) != 0) {
+                val index = sections.indexOf(it) - 1
+                header += sections[index].size + 2
                 footer += it.size + 2
             }
             footerList.add(footer)

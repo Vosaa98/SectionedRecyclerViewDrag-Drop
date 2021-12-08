@@ -1,8 +1,10 @@
 package com.example.draganddrop
 
 import android.annotation.SuppressLint
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.example.draganddrop.databinding.FooterBinding
 import com.example.draganddrop.databinding.HeaderBinding
@@ -39,7 +41,10 @@ class MainAdapter :
             binding.root
         ) {
 
-        fun bindItem(text: String) {
+        fun bindItem(text: String, position: Int) {
+            binding.root.setOnClickListener {
+                Toast.makeText(binding.root.context, "$position", Toast.LENGTH_SHORT).show()
+            }
             binding.rowTextView.text = text
             binding.executePendingBindings()
         }
@@ -58,7 +63,10 @@ class MainAdapter :
             binding.root
         ) {
 
-        fun bindHeader(header: String) {
+        fun bindHeader(header: String, position: Int) {
+            binding.root.setOnClickListener {
+                Toast.makeText(binding.root.context, "$position", Toast.LENGTH_SHORT).show()
+            }
             binding.rowTextView.text = header
             binding.executePendingBindings()
         }
@@ -77,7 +85,10 @@ class MainAdapter :
             binding.root
         ) {
 
-        fun bindFooter(footer: String) {
+        fun bindFooter(footer: String, position: Int) {
+            binding.root.setOnClickListener {
+                Toast.makeText(binding.root.context, "$position", Toast.LENGTH_SHORT).show()
+            }
             binding.rowTextView.text = footer
             binding.executePendingBindings()
         }
@@ -111,15 +122,15 @@ class MainAdapter :
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (holder) {
             is ItemViewHolder -> {
-                holder.bindItem(itemList[position])
+                holder.bindItem(itemList[position], position)
                 //cast holder to VHItem and set data
             }
             is HeaderViewHolder -> {
-                holder.bindHeader("Header $headerCounter")
+                holder.bindHeader("Header $headerCounter", position)
                 //cast holder to VHHeader and set data for header.
             }
             is FooterViewHolder -> {
-                holder.bindFooter("Footer $footerCounter")
+                holder.bindFooter("Footer $footerCounter", position)
                 //cast holder to VHHeader and set data for header.
             }
         }
@@ -170,6 +181,7 @@ class MainAdapter :
     fun adapterDeleteItem(position: Int) {
         itemList.removeAt(position)
         for (i in 0 until footerList.size) {
+
             if (footerList[i] > position) {
                 footerList[i] -= 1
             }
@@ -179,4 +191,23 @@ class MainAdapter :
         }
         notifyItemRemoved(position)
     }
+
+    fun deleteList(headerPosition: Int, footerPosition: Int) {
+        for (i in 0 until headerList.size) {
+            if (headerList[i] > headerPosition) {
+                headerList[i] -= 2
+            }
+            if (footerList[i] > footerPosition) {
+                footerList[i] -= 2
+            }
+        }
+        headerList.remove(headerPosition)
+        footerList.remove(footerPosition)
+
+        itemList.removeAt(headerPosition)
+        itemList.removeAt(footerPosition)
+
+        notifyDataSetChanged()
+    }
+
 }
