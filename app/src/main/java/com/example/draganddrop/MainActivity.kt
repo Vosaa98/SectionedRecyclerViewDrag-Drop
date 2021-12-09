@@ -129,7 +129,10 @@ class MainActivity : AppCompatActivity() {
                         //If it is the 1st Header of the list, return
                         if (targetPosition == 0) return true
 
-                        deleteListHeader = footerList.contains(sourcePosition + 1)
+                        if (!deleteListHeader)
+                            deleteListHeader = footerList.contains(sourcePosition + 1)
+
+                        Log.d("test123", "deleteListHeader: $deleteListHeader")
 
                         val newItemPosition = targetPosition - 1
                         dragTo -= 1
@@ -148,7 +151,8 @@ class MainActivity : AppCompatActivity() {
                         //If it is the last Footer of the list, return
                         if (targetPosition == itemList.size - 1) return true
 
-                        deleteListFooter = headerList.contains(sourcePosition - 1)
+                        if (!deleteListFooter)
+                            deleteListFooter = headerList.contains(sourcePosition - 1)
 
                         val newItemPosition = targetPosition + 1
                         dragTo += 1
